@@ -1,11 +1,4 @@
 How to use NexusLib in your scripts
-   ███╗   ██╗███████╗██╗  ██╗██╗   ██╗███████╗
-   ████╗  ██║██╔════╝╚██╗██╔╝██║   ██║██╔════╝
-   ██╔██╗ ██║█████╗   ╚███╔╝ ██║   ██║███████╗
-   ██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║╚════██║
-   ██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝███████║
-   ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-NexusLib — Modern Roblox UI Library
 
 -- Load the library
 local NexusLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/zxxdf12345/EspBypass.lua/main/main.lua"))()
