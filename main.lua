@@ -1,5 +1,6 @@
 -- ===================================================
--- 🎨 NEXUS UI LIBRARY v1.1 (XENO FIX)
+-- 🎨 NEXUS UI LIBRARY v1.2
+-- Компактная заставка + Xeno Fix
 -- ===================================================
 
 local NexusLib = {}
@@ -11,44 +12,29 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
--- 🔧 ФИКС: Выбираем куда ставить GUI
 local function getGuiParent()
-    -- Способ 1: gethui (Xeno/Synapse)
-    local ok1, result1 = pcall(function()
-        return gethui()
+    local ok1, r1 = pcall(function() return gethui() end)
+    if ok1 and r1 then return r1 end
+    local ok2 = pcall(function()
+        local t = Instance.new("ScreenGui")
+        t.Parent = game:GetService("CoreGui")
+        t:Destroy()
     end)
-    if ok1 and result1 then return result1 end
-
-    -- Способ 2: CoreGui
-    local ok2, result2 = pcall(function()
-        local test = Instance.new("ScreenGui")
-        test.Parent = game:GetService("CoreGui")
-        test:Destroy()
-        return game:GetService("CoreGui")
-    end)
-    if ok2 and result2 then return result2 end
-
-    -- Способ 3: PlayerGui
+    if ok2 then return game:GetService("CoreGui") end
     return LocalPlayer:WaitForChild("PlayerGui")
 end
 
 local GuiParent = getGuiParent()
 
--- ============================================
---              🎨 ТЕМА
--- ============================================
 local Theme = {
     Background      = Color3.fromRGB(12, 12, 18),
     SideBar         = Color3.fromRGB(16, 16, 24),
     TopBar          = Color3.fromRGB(18, 18, 28),
     TabActive       = Color3.fromRGB(25, 25, 40),
     TabInactive     = Color3.fromRGB(16, 16, 24),
-    Section         = Color3.fromRGB(20, 20, 32),
     Element         = Color3.fromRGB(25, 25, 38),
     ElementHover    = Color3.fromRGB(30, 30, 48),
     Accent          = Color3.fromRGB(88, 101, 242),
-    AccentDark      = Color3.fromRGB(68, 81, 222),
-    AccentLight     = Color3.fromRGB(108, 121, 255),
     Text            = Color3.fromRGB(240, 240, 245),
     TextDark        = Color3.fromRGB(150, 150, 170),
     TextDarker      = Color3.fromRGB(100, 100, 120),
@@ -59,23 +45,18 @@ local Theme = {
     Dropdown_Bg     = Color3.fromRGB(18, 18, 28),
     Input_Bg        = Color3.fromRGB(18, 18, 28),
     Divider         = Color3.fromRGB(35, 35, 50),
-    Shadow          = Color3.fromRGB(0, 0, 0),
     Success         = Color3.fromRGB(67, 181, 129),
     Warning         = Color3.fromRGB(250, 166, 26),
     Error           = Color3.fromRGB(237, 66, 69),
 }
 
--- ============================================
---              🔧 УТИЛИТЫ
--- ============================================
 local function tween(obj, props, duration, style, dir)
     if not obj or not obj.Parent then return end
-    local info = TweenInfo.new(
+    local t = TweenService:Create(obj, TweenInfo.new(
         duration or 0.2,
         style or Enum.EasingStyle.Quad,
         dir or Enum.EasingDirection.Out
-    )
-    local t = TweenService:Create(obj, info, props)
+    ), props)
     t:Play()
     return t
 end
@@ -88,68 +69,40 @@ local function rippleEffect(button, x, y)
     ripple.BorderSizePixel = 0
     ripple.ZIndex = button.ZIndex + 1
     ripple.Parent = button
-
     Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
-
-    local absPos = button.AbsolutePosition
-    local px = x - absPos.X
-    local py = y - absPos.Y
-
-    ripple.Position = UDim2.new(0, px, 0, py)
+    ripple.Position = UDim2.new(0, x - button.AbsolutePosition.X, 0, y - button.AbsolutePosition.Y)
     ripple.Size = UDim2.new(0, 0, 0, 0)
     ripple.AnchorPoint = Vector2.new(0.5, 0.5)
-
-    local maxSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2.5
-
-    tween(ripple, {
-        Size = UDim2.new(0, maxSize, 0, maxSize),
-        BackgroundTransparency = 1,
-    }, 0.6)
-
-    task.delay(0.6, function()
-        if ripple and ripple.Parent then ripple:Destroy() end
-    end)
+    local s = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2.5
+    tween(ripple, { Size = UDim2.new(0, s, 0, s), BackgroundTransparency = 1 }, 0.6)
+    task.delay(0.6, function() if ripple and ripple.Parent then ripple:Destroy() end end)
 end
 
 local function makeDraggable(frame, handle)
     local dragging, dragInput, dragStart, startPos
-
     handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or
-           input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
-
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
             end)
         end
     end)
-
     handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or
-           input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
-
     UIS.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
+            local d = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
         end
     end)
 end
 
--- ============================================
---          🏗️ ГЛАВНОЕ ОКНО
--- ============================================
 function NexusLib:CreateWindow(config)
     config = config or {}
     local windowName = config.Name or "Nexus Hub"
@@ -162,113 +115,134 @@ function NexusLib:CreateWindow(config)
     Window._tabs = {}
     Window._activeTab = nil
 
-    -- Удаляем старый
     for _, v in ipairs(GuiParent:GetChildren()) do
-        if v.Name == "NexusLib" then
-            v:Destroy()
-        end
+        if v.Name == "NexusLib" then v:Destroy() end
     end
 
-    -- ScreenGui
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "NexusLib"
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.ResetOnSpawn = false
-
-    -- 🔧 ФИКС: protect_gui если доступен (Xeno)
-    pcall(function()
-        if syn and syn.protect_gui then
-            syn.protect_gui(screenGui)
-        end
-    end)
-
+    pcall(function() if syn and syn.protect_gui then syn.protect_gui(screenGui) end end)
     screenGui.Parent = GuiParent
 
-    -- ========== INTRO SCREEN ==========
-    local introScreen = Instance.new("Frame")
-    introScreen.Size = UDim2.new(1, 0, 1, 0)
-    introScreen.BackgroundColor3 = Theme.Background
-    introScreen.BackgroundTransparency = 0
-    introScreen.ZIndex = 100
-    introScreen.Parent = screenGui
+    -- ========== КОМПАКТНАЯ ЗАСТАВКА ==========
+    local introFrame = Instance.new("Frame")
+    introFrame.Size = UDim2.new(0, 280, 0, 150)
+    introFrame.Position = UDim2.new(0.5, -140, 0.5, -75)
+    introFrame.BackgroundColor3 = Theme.Background
+    introFrame.BackgroundTransparency = 0.15
+    introFrame.ZIndex = 100
+    introFrame.Parent = screenGui
+    Instance.new("UICorner", introFrame).CornerRadius = UDim.new(0, 14)
 
-    local introContainer = Instance.new("Frame")
-    introContainer.Size = UDim2.new(0, 300, 0, 200)
-    introContainer.Position = UDim2.new(0.5, -150, 0.5, -100)
-    introContainer.BackgroundTransparency = 1
-    introContainer.ZIndex = 101
-    introContainer.Parent = introScreen
+    local introStroke = Instance.new("UIStroke")
+    introStroke.Color = Theme.Accent
+    introStroke.Thickness = 1.5
+    introStroke.Transparency = 0.3
+    introStroke.Parent = introFrame
+
+    -- Размытие фона (overlay)
+    local introOverlay = Instance.new("Frame")
+    introOverlay.Size = UDim2.new(1, 0, 1, 0)
+    introOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+    introOverlay.BackgroundTransparency = 0.6
+    introOverlay.ZIndex = 99
+    introOverlay.Parent = screenGui
 
     local introImg = Instance.new("ImageLabel")
-    introImg.Size = UDim2.new(0, 70, 0, 70)
-    introImg.Position = UDim2.new(0.5, -35, 0, 10)
+    introImg.Size = UDim2.new(0, 45, 0, 45)
+    introImg.Position = UDim2.new(0.5, -22, 0, 18)
     introImg.BackgroundTransparency = 1
     introImg.Image = introIcon
     introImg.ImageColor3 = Theme.Accent
     introImg.ImageTransparency = 1
-    introImg.ZIndex = 102
-    introImg.Parent = introContainer
+    introImg.ZIndex = 101
+    introImg.Parent = introFrame
 
     local introTitle = Instance.new("TextLabel")
-    introTitle.Size = UDim2.new(1, 0, 0, 40)
-    introTitle.Position = UDim2.new(0, 0, 0, 90)
+    introTitle.Size = UDim2.new(1, -20, 0, 28)
+    introTitle.Position = UDim2.new(0, 10, 0, 68)
     introTitle.BackgroundTransparency = 1
     introTitle.Text = introText
     introTitle.TextColor3 = Theme.Text
     introTitle.TextScaled = true
     introTitle.Font = Enum.Font.GothamBold
     introTitle.TextTransparency = 1
-    introTitle.ZIndex = 102
-    introTitle.Parent = introContainer
+    introTitle.ZIndex = 101
+    introTitle.Parent = introFrame
 
     local introSub = Instance.new("TextLabel")
-    introSub.Size = UDim2.new(1, 0, 0, 20)
-    introSub.Position = UDim2.new(0, 0, 0, 135)
+    introSub.Size = UDim2.new(1, -20, 0, 16)
+    introSub.Position = UDim2.new(0, 10, 0, 96)
     introSub.BackgroundTransparency = 1
     introSub.Text = "Loading..."
     introSub.TextColor3 = Theme.TextDark
     introSub.TextScaled = true
     introSub.Font = Enum.Font.Gotham
     introSub.TextTransparency = 1
-    introSub.ZIndex = 102
-    introSub.Parent = introContainer
+    introSub.ZIndex = 101
+    introSub.Parent = introFrame
 
     local loadBarBg = Instance.new("Frame")
-    loadBarBg.Size = UDim2.new(0.6, 0, 0, 4)
-    loadBarBg.Position = UDim2.new(0.2, 0, 0, 170)
+    loadBarBg.Size = UDim2.new(0.7, 0, 0, 4)
+    loadBarBg.Position = UDim2.new(0.15, 0, 0, 124)
     loadBarBg.BackgroundColor3 = Theme.Divider
     loadBarBg.BorderSizePixel = 0
-    loadBarBg.ZIndex = 102
-    loadBarBg.Parent = introContainer
+    loadBarBg.ZIndex = 101
+    loadBarBg.Parent = introFrame
     Instance.new("UICorner", loadBarBg).CornerRadius = UDim.new(1, 0)
 
     local loadBarFill = Instance.new("Frame")
     loadBarFill.Size = UDim2.new(0, 0, 1, 0)
     loadBarFill.BackgroundColor3 = Theme.Accent
     loadBarFill.BorderSizePixel = 0
-    loadBarFill.ZIndex = 103
+    loadBarFill.ZIndex = 102
     loadBarFill.Parent = loadBarBg
     Instance.new("UICorner", loadBarFill).CornerRadius = UDim.new(1, 0)
 
-    -- Анимация intro
+    -- Intro анимация
+    -- Появление
+    introFrame.Size = UDim2.new(0, 0, 0, 0)
+    introFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    introOverlay.BackgroundTransparency = 1
+
     task.spawn(function()
-        task.wait(0.3)
-        tween(introImg, { ImageTransparency = 0 }, 0.5)
-        task.wait(0.3)
-        tween(introTitle, { TextTransparency = 0 }, 0.4)
+        -- Overlay fade in
+        tween(introOverlay, { BackgroundTransparency = 0.6 }, 0.3)
+        
+        -- Фрейм появляется
+        tween(introFrame, {
+            Size = UDim2.new(0, 280, 0, 150),
+            Position = UDim2.new(0.5, -140, 0.5, -75),
+        }, 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        
+        task.wait(0.4)
+        tween(introImg, { ImageTransparency = 0 }, 0.3)
         task.wait(0.2)
-        tween(introSub, { TextTransparency = 0 }, 0.3)
-        task.wait(0.2)
-        tween(loadBarFill, { Size = UDim2.new(1, 0, 1, 0) }, 1.5, Enum.EasingStyle.Quad)
-        task.wait(2)
-        tween(introScreen, { BackgroundTransparency = 1 }, 0.5)
-        tween(introImg, { ImageTransparency = 1 }, 0.3)
-        tween(introTitle, { TextTransparency = 1 }, 0.3)
-        tween(introSub, { TextTransparency = 1 }, 0.3)
-        tween(loadBarBg, { BackgroundTransparency = 1 }, 0.3)
-        tween(loadBarFill, { BackgroundTransparency = 1 }, 0.3)
-        task.wait(0.5)
-        if introScreen and introScreen.Parent then introScreen:Destroy() end
+        tween(introTitle, { TextTransparency = 0 }, 0.3)
+        task.wait(0.15)
+        tween(introSub, { TextTransparency = 0 }, 0.2)
+        task.wait(0.1)
+        tween(loadBarFill, { Size = UDim2.new(1, 0, 1, 0) }, 1.2, Enum.EasingStyle.Quad)
+        task.wait(1.5)
+
+        -- Исчезновение
+        tween(introFrame, {
+            Size = UDim2.new(0, 260, 0, 140),
+            Position = UDim2.new(0.5, -130, 0.5, -70),
+            BackgroundTransparency = 1,
+        }, 0.3)
+        tween(introStroke, { Transparency = 1 }, 0.3)
+        tween(introImg, { ImageTransparency = 1 }, 0.2)
+        tween(introTitle, { TextTransparency = 1 }, 0.2)
+        tween(introSub, { TextTransparency = 1 }, 0.2)
+        tween(loadBarBg, { BackgroundTransparency = 1 }, 0.2)
+        tween(loadBarFill, { BackgroundTransparency = 1 }, 0.2)
+        tween(introOverlay, { BackgroundTransparency = 1 }, 0.3)
+        task.wait(0.35)
+        if introFrame and introFrame.Parent then introFrame:Destroy() end
+        if introOverlay and introOverlay.Parent then introOverlay:Destroy() end
     end)
 
     -- ========== ГЛАВНЫЙ ФРЕЙМ ==========
@@ -287,15 +261,28 @@ function NexusLib:CreateWindow(config)
     mainStroke.Thickness = 1
     mainStroke.Parent = mainFrame
 
+    -- Главный фрейм появляется после заставки
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
+    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.Visible = false
+
+    task.delay(2.5, function()
+        mainFrame.Visible = true
+        tween(mainFrame, {
+            Size = windowSize,
+            Position = UDim2.new(0.5, -(windowSize.X.Offset/2), 0.5, -(windowSize.Y.Offset/2)),
+            BackgroundTransparency = 0,
+        }, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    end)
+
     -- ========== TOP BAR ==========
     local topBar = Instance.new("Frame")
-    topBar.Name = "TopBar"
     topBar.Size = UDim2.new(1, 0, 0, 40)
     topBar.BackgroundColor3 = Theme.TopBar
     topBar.BorderSizePixel = 0
     topBar.ZIndex = 5
     topBar.Parent = mainFrame
-
     Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 10)
 
     local topBarFix = Instance.new("Frame")
@@ -340,26 +327,15 @@ function NexusLib:CreateWindow(config)
         btn.Font = Enum.Font.GothamBold
         btn.ZIndex = 6
         btn.Parent = topBar
-
-        btn.MouseEnter:Connect(function()
-            tween(btn, { TextColor3 = color or Theme.Text }, 0.15)
-        end)
-        btn.MouseLeave:Connect(function()
-            tween(btn, { TextColor3 = Theme.TextDark }, 0.15)
-        end)
+        btn.MouseEnter:Connect(function() tween(btn, { TextColor3 = color }, 0.15) end)
+        btn.MouseLeave:Connect(function() tween(btn, { TextColor3 = Theme.TextDark }, 0.15) end)
         btn.MouseButton1Click:Connect(callback)
         return btn
     end
 
     createWindowBtn("✕", UDim2.new(1, -35, 0.5, -15), Theme.Error, function()
-        tween(mainFrame, {
-            Size = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0.5, 0, 0.5, 0),
-            BackgroundTransparency = 1,
-        }, 0.3)
-        task.delay(0.35, function()
-            if screenGui and screenGui.Parent then screenGui:Destroy() end
-        end)
+        tween(mainFrame, { Size = UDim2.new(0,0,0,0), Position = UDim2.new(0.5,0,0.5,0), BackgroundTransparency = 1 }, 0.3)
+        task.delay(0.35, function() if screenGui and screenGui.Parent then screenGui:Destroy() end end)
     end)
 
     createWindowBtn("─", UDim2.new(1, -65, 0.5, -15), Theme.Warning, function()
@@ -368,7 +344,6 @@ function NexusLib:CreateWindow(config)
 
     -- ========== SIDEBAR ==========
     local sideBar = Instance.new("Frame")
-    sideBar.Name = "SideBar"
     sideBar.Size = UDim2.new(0, 150, 1, -40)
     sideBar.Position = UDim2.new(0, 0, 0, 40)
     sideBar.BackgroundColor3 = Theme.SideBar
@@ -385,7 +360,6 @@ function NexusLib:CreateWindow(config)
     sideDiv.Parent = sideBar
 
     local tabContainer = Instance.new("ScrollingFrame")
-    tabContainer.Name = "TabContainer"
     tabContainer.Size = UDim2.new(1, -10, 1, -20)
     tabContainer.Position = UDim2.new(0, 5, 0, 10)
     tabContainer.BackgroundTransparency = 1
@@ -403,9 +377,8 @@ function NexusLib:CreateWindow(config)
         tabContainer.CanvasSize = UDim2.new(0, 0, 0, tabLayout.AbsoluteContentSize.Y + 10)
     end)
 
-    -- ========== CONTENT AREA ==========
+    -- ========== CONTENT ==========
     local contentArea = Instance.new("Frame")
-    contentArea.Name = "ContentArea"
     contentArea.Size = UDim2.new(1, -151, 1, -40)
     contentArea.Position = UDim2.new(0, 151, 0, 40)
     contentArea.BackgroundColor3 = Theme.Background
@@ -421,31 +394,14 @@ function NexusLib:CreateWindow(config)
         end
     end)
 
-    -- Анимация открытия
-    mainFrame.Size = UDim2.new(0, 0, 0, 0)
-    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    mainFrame.BackgroundTransparency = 1
-
-    task.delay(3, function()
-        tween(mainFrame, {
-            Size = windowSize,
-            Position = UDim2.new(0.5, -(windowSize.X.Offset/2), 0.5, -(windowSize.Y.Offset/2)),
-            BackgroundTransparency = 0,
-        }, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    end)
-
-    -- ============================================
-    --              📑 TAB
-    -- ============================================
+    -- ========== TAB ==========
     function Window:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
         local tabName = tabConfig.Name or "Tab"
         local tabIcon = tabConfig.Icon or "rbxassetid://10734950309"
-
         local Tab = {}
 
         local tabBtn = Instance.new("TextButton")
-        tabBtn.Name = tabName
         tabBtn.Size = UDim2.new(1, 0, 0, 38)
         tabBtn.BackgroundColor3 = Theme.TabInactive
         tabBtn.BackgroundTransparency = 0.5
@@ -453,7 +409,6 @@ function NexusLib:CreateWindow(config)
         tabBtn.AutoButtonColor = false
         tabBtn.ZIndex = 5
         tabBtn.Parent = tabContainer
-
         Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 8)
 
         local tabAccent = Instance.new("Frame")
@@ -488,7 +443,6 @@ function NexusLib:CreateWindow(config)
         tabText.Parent = tabBtn
 
         local tabContent = Instance.new("ScrollingFrame")
-        tabContent.Name = tabName .. "_Content"
         tabContent.Size = UDim2.new(1, -20, 1, -20)
         tabContent.Position = UDim2.new(0, 10, 0, 10)
         tabContent.BackgroundTransparency = 1
@@ -499,19 +453,17 @@ function NexusLib:CreateWindow(config)
         tabContent.ZIndex = 3
         tabContent.Parent = contentArea
 
-        local contentLayout = Instance.new("UIListLayout")
-        contentLayout.Padding = UDim.new(0, 8)
-        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        contentLayout.Parent = tabContent
+        local cLayout = Instance.new("UIListLayout")
+        cLayout.Padding = UDim.new(0, 8)
+        cLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        cLayout.Parent = tabContent
 
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            tabContent.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+        cLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            tabContent.CanvasSize = UDim2.new(0, 0, 0, cLayout.AbsoluteContentSize.Y + 20)
         end)
 
         local function activate()
-            for _, t in ipairs(Window._tabs) do
-                t._deactivate()
-            end
+            for _, t in ipairs(Window._tabs) do t._deactivate() end
             tween(tabBtn, { BackgroundColor3 = Theme.TabActive, BackgroundTransparency = 0 }, 0.2)
             tween(tabAccent, { BackgroundTransparency = 0 }, 0.2)
             tween(tabIconImg, { ImageColor3 = Theme.Accent }, 0.2)
@@ -531,22 +483,14 @@ function NexusLib:CreateWindow(config)
         Tab._deactivate = deactivate
 
         tabBtn.MouseEnter:Connect(function()
-            if Window._activeTab ~= Tab then
-                tween(tabBtn, { BackgroundTransparency = 0.2 }, 0.15)
-            end
+            if Window._activeTab ~= Tab then tween(tabBtn, { BackgroundTransparency = 0.2 }, 0.15) end
         end)
         tabBtn.MouseLeave:Connect(function()
-            if Window._activeTab ~= Tab then
-                tween(tabBtn, { BackgroundTransparency = 0.5 }, 0.15)
-            end
+            if Window._activeTab ~= Tab then tween(tabBtn, { BackgroundTransparency = 0.5 }, 0.15) end
         end)
-
         tabBtn.MouseButton1Click:Connect(activate)
 
-        if #Window._tabs == 0 then
-            task.defer(activate)
-        end
-
+        if #Window._tabs == 0 then task.defer(activate) end
         table.insert(Window._tabs, Tab)
 
         -- SECTION
@@ -581,10 +525,9 @@ function NexusLib:CreateWindow(config)
         -- BUTTON
         function Tab:CreateButton(config)
             config = config or {}
-            local height = config.Description and 52 or 38
-
+            local h = config.Description and 52 or 38
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, height)
+            btn.Size = UDim2.new(1, 0, 0, h)
             btn.BackgroundColor3 = Theme.Element
             btn.Text = ""
             btn.AutoButtonColor = false
@@ -631,10 +574,10 @@ function NexusLib:CreateWindow(config)
         function Tab:CreateToggle(config)
             config = config or {}
             local toggled = config.Default or false
-            local height = config.Description and 52 or 38
+            local h = config.Description and 52 or 38
 
             local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(1, 0, 0, height)
+            frame.Size = UDim2.new(1, 0, 0, h)
             frame.BackgroundColor3 = Theme.Element
             frame.ZIndex = 3
             frame.Parent = tabContent
@@ -707,11 +650,9 @@ function NexusLib:CreateWindow(config)
         -- SLIDER
         function Tab:CreateSlider(config)
             config = config or {}
-            local min = config.Min or 0
-            local max = config.Max or 100
-            local default = config.Default or min
-            local increment = config.Increment or 1
-            local value = default
+            local min, max = config.Min or 0, config.Max or 100
+            local value = config.Default or min
+            local inc = config.Increment or 1
 
             local frame = Instance.new("Frame")
             frame.Size = UDim2.new(1, 0, 0, 55)
@@ -752,10 +693,10 @@ function NexusLib:CreateWindow(config)
             sBg.Parent = frame
             Instance.new("UICorner", sBg).CornerRadius = UDim.new(1, 0)
 
-            local pct = (value - min) / (max - min)
+            local p = (value - min) / (max - min)
 
             local sFill = Instance.new("Frame")
-            sFill.Size = UDim2.new(pct, 0, 1, 0)
+            sFill.Size = UDim2.new(p, 0, 1, 0)
             sFill.BackgroundColor3 = Theme.Slider_Fill
             sFill.ZIndex = 5
             sFill.Parent = sBg
@@ -763,7 +704,7 @@ function NexusLib:CreateWindow(config)
 
             local knob = Instance.new("Frame")
             knob.Size = UDim2.new(0, 16, 0, 16)
-            knob.Position = UDim2.new(pct, -8, 0.5, -8)
+            knob.Position = UDim2.new(p, -8, 0.5, -8)
             knob.BackgroundColor3 = Theme.Text
             knob.ZIndex = 6
             knob.Parent = sBg
@@ -773,11 +714,9 @@ function NexusLib:CreateWindow(config)
             ks.Thickness = 2
             ks.Parent = knob
 
-            local function upd(p)
-                p = math.clamp(p, 0, 1)
-                local raw = min + (max - min) * p
-                value = math.floor(raw / increment + 0.5) * increment
-                value = math.clamp(value, min, max)
+            local function upd(pp)
+                pp = math.clamp(pp, 0, 1)
+                value = math.clamp(math.floor((min + (max - min) * pp) / inc + 0.5) * inc, min, max)
                 local rp = (value - min) / (max - min)
                 tween(sFill, { Size = UDim2.new(rp, 0, 1, 0) }, 0.08)
                 tween(knob, { Position = UDim2.new(rp, -8, 0.5, -8) }, 0.08)
@@ -786,7 +725,6 @@ function NexusLib:CreateWindow(config)
             end
 
             local sliding = false
-
             local sInput = Instance.new("TextButton")
             sInput.Size = UDim2.new(1, 0, 0, 20)
             sInput.Position = UDim2.new(0, 0, 0, -7)
@@ -794,7 +732,6 @@ function NexusLib:CreateWindow(config)
             sInput.Text = ""
             sInput.ZIndex = 7
             sInput.Parent = sBg
-
             sInput.MouseButton1Down:Connect(function()
                 sliding = true
                 upd((Mouse.X - sBg.AbsolutePosition.X) / sBg.AbsoluteSize.X)
@@ -803,11 +740,8 @@ function NexusLib:CreateWindow(config)
             UIS.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end
             end)
-
             RunService.RenderStepped:Connect(function()
-                if sliding then
-                    upd((Mouse.X - sBg.AbsolutePosition.X) / sBg.AbsoluteSize.X)
-                end
+                if sliding then upd((Mouse.X - sBg.AbsolutePosition.X) / sBg.AbsoluteSize.X) end
             end)
 
             local obj = {}
@@ -860,7 +794,6 @@ function NexusLib:CreateWindow(config)
             optC.BackgroundTransparency = 1
             optC.ZIndex = 4
             optC.Parent = frame
-
             Instance.new("UIListLayout", optC).Padding = UDim.new(0, 3)
 
             local function createOpt(text)
@@ -875,7 +808,6 @@ function NexusLib:CreateWindow(config)
                 ob.ZIndex = 5
                 ob.Parent = optC
                 Instance.new("UICorner", ob).CornerRadius = UDim.new(0, 6)
-
                 ob.MouseEnter:Connect(function() tween(ob, { BackgroundColor3 = Theme.ElementHover, TextColor3 = Theme.Text }, 0.1) end)
                 ob.MouseLeave:Connect(function() tween(ob, { BackgroundColor3 = Theme.Dropdown_Bg, TextColor3 = Theme.TextDark }, 0.1) end)
                 ob.MouseButton1Click:Connect(function()
@@ -913,7 +845,6 @@ function NexusLib:CreateWindow(config)
         -- INPUT
         function Tab:CreateInput(config)
             config = config or {}
-
             local frame = Instance.new("Frame")
             frame.Size = UDim2.new(1, 0, 0, 38)
             frame.BackgroundColor3 = Theme.Element
@@ -990,7 +921,6 @@ function NexusLib:CreateWindow(config)
         -- PARAGRAPH
         function Tab:CreateParagraph(config)
             config = config or {}
-
             local frame = Instance.new("Frame")
             frame.Size = UDim2.new(1, 0, 0, 60)
             frame.BackgroundColor3 = Theme.Element
@@ -1039,13 +969,7 @@ function NexusLib:CreateWindow(config)
     -- NOTIFY
     function Window:Notify(config)
         config = config or {}
-        local nColor = ({
-            Info = Theme.Accent,
-            Success = Theme.Success,
-            Warning = Theme.Warning,
-            Error = Theme.Error,
-        })[config.Type or "Info"] or Theme.Accent
-
+        local nColor = ({ Info = Theme.Accent, Success = Theme.Success, Warning = Theme.Warning, Error = Theme.Error })[config.Type or "Info"] or Theme.Accent
         local dur = config.Duration or 4
 
         local nf = Instance.new("Frame")
@@ -1055,7 +979,6 @@ function NexusLib:CreateWindow(config)
         nf.ZIndex = 50
         nf.Parent = screenGui
         Instance.new("UICorner", nf).CornerRadius = UDim.new(0, 10)
-
         local ns = Instance.new("UIStroke")
         ns.Color = nColor
         ns.Thickness = 1
@@ -1106,7 +1029,6 @@ function NexusLib:CreateWindow(config)
 
         tween(nf, { Position = UDim2.new(1, -290, 1, -80) }, 0.4, Enum.EasingStyle.Back)
         tween(np, { Size = UDim2.new(0, 0, 0, 2) }, dur)
-
         task.delay(dur, function()
             tween(nf, { Position = UDim2.new(1, 10, 1, -80) }, 0.3)
             task.delay(0.35, function() if nf and nf.Parent then nf:Destroy() end end)
